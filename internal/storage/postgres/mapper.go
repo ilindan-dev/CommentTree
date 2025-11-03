@@ -44,3 +44,11 @@ func uuidPtrToPgtypeUUID(id *uuid.UUID) pgtype.UUID {
 		Bytes: *id, Valid: true,
 	}
 }
+
+func pgtypeUUIDToUUIDPtr(pgID pgtype.UUID) *uuid.UUID {
+	if !pgID.Valid {
+		return nil
+	}
+	uid := uuid.UUID(pgID.Bytes)
+	return &uid
+}
