@@ -45,7 +45,13 @@ func (r *commentRepository) CreateComment(ctx context.Context, parentID *uuid.UU
 		r.logger.Error().Err(err).Str("parent", parentStr).Msg("failed to create comment")
 		return nil, err
 	}
-	return dbCommentToDomainComment(&dbComment), nil
+	return &model.Comment{
+		ID:        dbComment.ID.Bytes,
+		ParentID:  pgtypeUUIDToUUIDPtr(dbComment.ParentID),
+		Text:      dbComment.Text,
+		CreatedAt: dbComment.CreatedAt.Time,
+		UpdatedAt: dbComment.UpdatedAt.Time,
+	}, nil
 }
 
 // GetRootCommentsDesc retrieves root comments in descending order with pagination.
@@ -59,7 +65,17 @@ func (r *commentRepository) GetRootCommentsDesc(ctx context.Context, limit int32
 		r.logger.Error().Err(err).Int32("limit", limit).Int32("offset", offset).Msg("failed to get root comments desc")
 		return nil, err
 	}
-	return dbCommentsToDomainComments(dbComments), nil
+	domainComments := make([]model.Comment, len(dbComments))
+	for i, row := range dbComments {
+		domainComments[i] = model.Comment{
+			ID:        row.ID.Bytes,
+			ParentID:  pgtypeUUIDToUUIDPtr(row.ParentID),
+			Text:      row.Text,
+			CreatedAt: row.CreatedAt.Time,
+			UpdatedAt: row.UpdatedAt.Time,
+		}
+	}
+	return domainComments, nil
 }
 
 // GetRootCommentsAsc retrieves root comments in ascending order with pagination.
@@ -73,7 +89,17 @@ func (r *commentRepository) GetRootCommentsAsc(ctx context.Context, limit int32,
 		r.logger.Error().Err(err).Int32("limit", limit).Int32("offset", offset).Msg("failed to get root comments asc")
 		return nil, err
 	}
-	return dbCommentsToDomainComments(dbComments), nil
+	domainComments := make([]model.Comment, len(dbComments))
+	for i, row := range dbComments {
+		domainComments[i] = model.Comment{
+			ID:        row.ID.Bytes,
+			ParentID:  pgtypeUUIDToUUIDPtr(row.ParentID),
+			Text:      row.Text,
+			CreatedAt: row.CreatedAt.Time,
+			UpdatedAt: row.UpdatedAt.Time,
+		}
+	}
+	return domainComments, nil
 }
 
 // SearchComments searches comments by text with pagination.
@@ -88,7 +114,18 @@ func (r *commentRepository) SearchComments(ctx context.Context, query string, li
 		r.logger.Error().Err(err).Str("query", query).Int32("limit", limit).Int32("offset", offset).Msg("failed to search comments")
 		return nil, err
 	}
-	return dbCommentsToDomainComments(dbComments), nil
+
+	domainComments := make([]model.Comment, len(dbComments))
+	for i, row := range dbComments {
+		domainComments[i] = model.Comment{
+			ID:        row.ID.Bytes,
+			ParentID:  pgtypeUUIDToUUIDPtr(row.ParentID),
+			Text:      row.Text,
+			CreatedAt: row.CreatedAt.Time,
+			UpdatedAt: row.UpdatedAt.Time,
+		}
+	}
+	return domainComments, nil
 }
 
 // SoftDeleteComment performs a soft delete on a comment by its ID.
@@ -98,7 +135,13 @@ func (r *commentRepository) SoftDeleteComment(ctx context.Context, commentID uui
 		r.logger.Error().Err(err).Str("comment_id", commentID.String()).Msg("failed to soft delete comment")
 		return nil, err
 	}
-	return dbCommentToDomainComment(&dbComment), nil
+	return &model.Comment{
+		ID:        dbComment.ID.Bytes,
+		ParentID:  pgtypeUUIDToUUIDPtr(dbComment.ParentID),
+		Text:      dbComment.Text,
+		CreatedAt: dbComment.CreatedAt.Time,
+		UpdatedAt: dbComment.UpdatedAt.Time,
+	}, nil
 }
 
 // GetCommentSubtreeAsc retrieves the subtree of comments starting from the root comment ID in ascending order.

@@ -11,13 +11,13 @@ import (
 )
 
 type Querier interface {
-	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
+	CreateComment(ctx context.Context, arg CreateCommentParams) (CreateCommentRow, error)
 	GetCommentSubtreeAsc(ctx context.Context, rootID pgtype.UUID) ([]GetCommentSubtreeAscRow, error)
 	GetCommentSubtreeDesc(ctx context.Context, rootID pgtype.UUID) ([]GetCommentSubtreeDescRow, error)
-	GetRootCommentsAsc(ctx context.Context, arg GetRootCommentsAscParams) ([]Comment, error)
-	GetRootCommentsDesc(ctx context.Context, arg GetRootCommentsDescParams) ([]Comment, error)
-	SearchComments(ctx context.Context, arg SearchCommentsParams) ([]Comment, error)
-	SoftDeleteComment(ctx context.Context, id pgtype.UUID) (Comment, error)
+	GetRootCommentsAsc(ctx context.Context, arg GetRootCommentsAscParams) ([]GetRootCommentsAscRow, error)
+	GetRootCommentsDesc(ctx context.Context, arg GetRootCommentsDescParams) ([]GetRootCommentsDescRow, error)
+	SearchComments(ctx context.Context, arg SearchCommentsParams) ([]SearchCommentsRow, error)
+	SoftDeleteComment(ctx context.Context, id pgtype.UUID) (SoftDeleteCommentRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

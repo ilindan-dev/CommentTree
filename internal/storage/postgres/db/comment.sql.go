@@ -14,7 +14,7 @@ import (
 const createComment = `-- name: CreateComment :one
 INSERT INTO comments (parent_id, text)
 VALUES ($1, $2)
-RETURNING id, parent_id, text, created_at, updated_at, tsv
+RETURNING id, parent_id, text, created_at, updated_at
 `
 
 type CreateCommentParams struct {
@@ -22,16 +22,23 @@ type CreateCommentParams struct {
 	Text     string      `json:"text"`
 }
 
-func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error) {
+type CreateCommentRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	ParentID  pgtype.UUID        `json:"parent_id"`
+	Text      string             `json:"text"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (CreateCommentRow, error) {
 	row := q.db.QueryRow(ctx, createComment, arg.ParentID, arg.Text)
-	var i Comment
+	var i CreateCommentRow
 	err := row.Scan(
 		&i.ID,
 		&i.ParentID,
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Tsv,
 	)
 	return i, err
 }
@@ -39,18 +46,20 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 const getCommentSubtreeAsc = `-- name: GetCommentSubtreeAsc :many
 WITH RECURSIVE comment_tree AS (
     SELECT
-        c.id, c.parent_id, c.text, c.created_at, c.updated_at, c.tsv,
+        c.id, c.parent_id, c.text, c.created_at, c.updated_at,
         ARRAY[c.created_at] AS sort_path
     FROM comments c
     WHERE c.id = $1
+
     UNION ALL
+
     SELECT
-        c.id, c.parent_id, c.text, c.created_at, c.updated_at, c.tsv,
+        c.id, c.parent_id, c.text, c.created_at, c.updated_at,
         ct.sort_path || c.created_at
     FROM comments c
              JOIN comment_tree ct ON c.parent_id = ct.id
 )
-SELECT id, parent_id, text, created_at, updated_at, tsv, sort_path FROM comment_tree
+SELECT id, parent_id, text, created_at, updated_at FROM comment_tree
 ORDER BY sort_path
 `
 
@@ -60,8 +69,6 @@ type GetCommentSubtreeAscRow struct {
 	Text      string             `json:"text"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-	Tsv       interface{}        `json:"tsv"`
-	SortPath  interface{}        `json:"sort_path"`
 }
 
 func (q *Queries) GetCommentSubtreeAsc(ctx context.Context, rootID pgtype.UUID) ([]GetCommentSubtreeAscRow, error) {
@@ -79,8 +86,6 @@ func (q *Queries) GetCommentSubtreeAsc(ctx context.Context, rootID pgtype.UUID) 
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Tsv,
-			&i.SortPath,
 		); err != nil {
 			return nil, err
 		}
@@ -95,18 +100,20 @@ func (q *Queries) GetCommentSubtreeAsc(ctx context.Context, rootID pgtype.UUID) 
 const getCommentSubtreeDesc = `-- name: GetCommentSubtreeDesc :many
 WITH RECURSIVE comment_tree AS (
     SELECT
-        c.id, c.parent_id, c.text, c.created_at, c.updated_at, c.tsv,
+        c.id, c.parent_id, c.text, c.created_at, c.updated_at,
         ARRAY[EXTRACT(EPOCH FROM c.created_at) * -1] AS sort_path
     FROM comments c
     WHERE c.id = $1
+
     UNION ALL
+
     SELECT
-        c.id, c.parent_id, c.text, c.created_at, c.updated_at, c.tsv,
+        c.id, c.parent_id, c.text, c.created_at, c.updated_at,
         ct.sort_path || (EXTRACT(EPOCH FROM c.created_at) * -1)
     FROM comments c
              JOIN comment_tree ct ON c.parent_id = ct.id
 )
-SELECT id, parent_id, text, created_at, updated_at, tsv, sort_path FROM comment_tree
+SELECT id, parent_id, text, created_at, updated_at FROM comment_tree
 ORDER BY sort_path
 `
 
@@ -116,8 +123,6 @@ type GetCommentSubtreeDescRow struct {
 	Text      string             `json:"text"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-	Tsv       interface{}        `json:"tsv"`
-	SortPath  interface{}        `json:"sort_path"`
 }
 
 func (q *Queries) GetCommentSubtreeDesc(ctx context.Context, rootID pgtype.UUID) ([]GetCommentSubtreeDescRow, error) {
@@ -135,8 +140,6 @@ func (q *Queries) GetCommentSubtreeDesc(ctx context.Context, rootID pgtype.UUID)
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Tsv,
-			&i.SortPath,
 		); err != nil {
 			return nil, err
 		}
@@ -149,7 +152,8 @@ func (q *Queries) GetCommentSubtreeDesc(ctx context.Context, rootID pgtype.UUID)
 }
 
 const getRootCommentsAsc = `-- name: GetRootCommentsAsc :many
-SELECT id, parent_id, text, created_at, updated_at, tsv FROM comments
+SELECT id, parent_id, text, created_at, updated_at
+FROM comments
 WHERE parent_id is NULL
 ORDER BY created_at ASC
 LIMIT $2 OFFSET $1
@@ -160,22 +164,29 @@ type GetRootCommentsAscParams struct {
 	Limit  int32 `json:"limit_"`
 }
 
-func (q *Queries) GetRootCommentsAsc(ctx context.Context, arg GetRootCommentsAscParams) ([]Comment, error) {
+type GetRootCommentsAscRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	ParentID  pgtype.UUID        `json:"parent_id"`
+	Text      string             `json:"text"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetRootCommentsAsc(ctx context.Context, arg GetRootCommentsAscParams) ([]GetRootCommentsAscRow, error) {
 	rows, err := q.db.Query(ctx, getRootCommentsAsc, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Comment
+	var items []GetRootCommentsAscRow
 	for rows.Next() {
-		var i Comment
+		var i GetRootCommentsAscRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ParentID,
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Tsv,
 		); err != nil {
 			return nil, err
 		}
@@ -188,7 +199,8 @@ func (q *Queries) GetRootCommentsAsc(ctx context.Context, arg GetRootCommentsAsc
 }
 
 const getRootCommentsDesc = `-- name: GetRootCommentsDesc :many
-SELECT id, parent_id, text, created_at, updated_at, tsv FROM comments
+SELECT id, parent_id, text, created_at, updated_at
+FROM comments
 WHERE parent_id is NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $1
@@ -199,22 +211,29 @@ type GetRootCommentsDescParams struct {
 	Limit  int32 `json:"limit_"`
 }
 
-func (q *Queries) GetRootCommentsDesc(ctx context.Context, arg GetRootCommentsDescParams) ([]Comment, error) {
+type GetRootCommentsDescRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	ParentID  pgtype.UUID        `json:"parent_id"`
+	Text      string             `json:"text"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetRootCommentsDesc(ctx context.Context, arg GetRootCommentsDescParams) ([]GetRootCommentsDescRow, error) {
 	rows, err := q.db.Query(ctx, getRootCommentsDesc, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Comment
+	var items []GetRootCommentsDescRow
 	for rows.Next() {
-		var i Comment
+		var i GetRootCommentsDescRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ParentID,
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Tsv,
 		); err != nil {
 			return nil, err
 		}
@@ -227,7 +246,8 @@ func (q *Queries) GetRootCommentsDesc(ctx context.Context, arg GetRootCommentsDe
 }
 
 const searchComments = `-- name: SearchComments :many
-SELECT id, parent_id, text, created_at, updated_at, tsv FROM comments
+SELECT id, parent_id, text, created_at, updated_at
+FROM comments
 WHERE tsv @@ to_tsquery('russian', $1)
 ORDER BY created_at DESC
 LIMIT $3 OFFSET $2
@@ -239,22 +259,29 @@ type SearchCommentsParams struct {
 	Limit  int32  `json:"limit_"`
 }
 
-func (q *Queries) SearchComments(ctx context.Context, arg SearchCommentsParams) ([]Comment, error) {
+type SearchCommentsRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	ParentID  pgtype.UUID        `json:"parent_id"`
+	Text      string             `json:"text"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) SearchComments(ctx context.Context, arg SearchCommentsParams) ([]SearchCommentsRow, error) {
 	rows, err := q.db.Query(ctx, searchComments, arg.Query, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Comment
+	var items []SearchCommentsRow
 	for rows.Next() {
-		var i Comment
+		var i SearchCommentsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ParentID,
 			&i.Text,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Tsv,
 		); err != nil {
 			return nil, err
 		}
@@ -270,19 +297,26 @@ const softDeleteComment = `-- name: SoftDeleteComment :one
 UPDATE comments
 SET text = '[deleted]', updated_at = NOW(), tsv = NULL
 WHERE id = $1
-RETURNING id, parent_id, text, created_at, updated_at, tsv
+RETURNING id, parent_id, text, created_at, updated_at
 `
 
-func (q *Queries) SoftDeleteComment(ctx context.Context, id pgtype.UUID) (Comment, error) {
+type SoftDeleteCommentRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	ParentID  pgtype.UUID        `json:"parent_id"`
+	Text      string             `json:"text"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) SoftDeleteComment(ctx context.Context, id pgtype.UUID) (SoftDeleteCommentRow, error) {
 	row := q.db.QueryRow(ctx, softDeleteComment, id)
-	var i Comment
+	var i SoftDeleteCommentRow
 	err := row.Scan(
 		&i.ID,
 		&i.ParentID,
 		&i.Text,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Tsv,
 	)
 	return i, err
 }
