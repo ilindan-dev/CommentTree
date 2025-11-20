@@ -1,0 +1,41 @@
+services:
+
+  app:
+    container_name: comment_tree_app
+    build: . # Строим из Dockerfile в текущей папке
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Переопределяем настройки из config.yaml через переменные окружения
+      # Формат: APP_<Секция>_<Поле> (верхний регистр)
+      APP_PORT: 8080
+      # host=db, так как внутри docker-сети сервис называется 'db'
+      APP_DB_DSN: "postgres://user:password@db:5432/comments_db?sslmode=disable"
+      # Настройки пула тоже можно переопределить
+      APP_DB_POOL_MAXOPENCONNS: 20
+    restart: unless-stopped
+
+  # Сервис базы данных
+  db:
+    image: postgres:15-alpine
+    container_name: comment_tree_db
+    ports:
+      - "5432:5432" # Пробрасываем порт наружу для отладки
+    environment:
+      POSTGRES_USER: "user"
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_DB: "comments_db"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d comments_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

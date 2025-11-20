@@ -1,0 +1,16 @@
+.idea
+.vscode
+bin
+tmp
+vendor
+*.exe
+*.dll
+*.so
+*.dylib
+comment-tree
+.env
+postgres_data/
+go.work
+coverage.out
+.DS_Store
+Thumbs.db
