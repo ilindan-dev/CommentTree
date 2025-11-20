@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CommentTree</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<h1>🌳 CommentTree</h1>
+
+<div class="controls">
+    <button id="btnHome" class="secondary">🏠 Домой</button>
+    <input type="text" id="searchInput" placeholder="Поиск комментариев...">
+    <button id="btnSearch">Найти</button>
+</div>
+
+<div class="main-form" id="rootFormContainer">
+    <h3>Новый комментарий</h3>
+    <div style="display: flex; gap: 10px;">
+        <textarea id="rootCommentText" rows="2" placeholder="Напишите что-нибудь..."></textarea>
+        <button id="btnPostRoot" style="height: fit-content;">Отправить</button>
+    </div>
+</div>
+
+<h2 id="listTitle">Последние комментарии</h2>
+
+<div id="commentsContainer"></div>
+
+<div class="pagination" id="paginationControls">
+    <button id="btnPrev">← Назад</button>
+    <span id="pageIndicator" style="align-self: center;">Страница 1</span>
+    <button id="btnNext">Вперед →</button>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
